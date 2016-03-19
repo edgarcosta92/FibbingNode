@@ -10,9 +10,6 @@ DIR=`dirname $SCRIPT`
 BIN=`(awk -F "=" '/quagga_path=/ { print $NF }' $DIR/fibbingnode/res/default.cfg)`
 
 quagga() {
-    git submodule init || exit 1
-    git submodule update || exit 1
-
     if ! getent group quagga ; then
         echo "Creating group quagga"
         groupadd quagga
@@ -34,7 +31,7 @@ quagga() {
     autoreconf -vfi
     # But succeeds after the second one.
     autoreconf -vfi
-    ./configure --prefix=${BIN} --enable-multipath=0
+    ./configure --prefix=${BIN} --enable-multipath=0 --enable-snmp=agentx
     make -j 4
     make install
     cd ${CWD}
