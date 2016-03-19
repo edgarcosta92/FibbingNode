@@ -1,3 +1,3 @@
 [submodule "quagga"]
-	path = quagga
+	path = Quagga
 	url = http://git.savannah.gnu.org/r/quagga.git
