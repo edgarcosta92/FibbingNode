@@ -31,7 +31,7 @@ quagga() {
     autoreconf -vfi
     # But succeeds after the second one.
     autoreconf -vfi
-    ./configure --prefix=${BIN} --enable-multipath=0 --enable-snmp=agentx
+    ./configure --prefix=${BIN} --enable-multipath=0 --enable-snmp=agentx --enable-vtysh
     make -j 4
     make install
     cd ${CWD}
