@@ -2,6 +2,8 @@ import sys
 import math
 import json
 
+import pdb
+
 from ipaddress import ip_interface, ip_network
 
 from mininet.net import Mininet
@@ -41,7 +43,7 @@ class IPNet(Mininet):
                  private_ip_count=1,
                  private_ip_net='10.0.0.0/8',
                  controller_net='172.16.0.0/12',
-                 ipBase='192.168.0.0/16',
+                 ipBase='192.164.0.0/16',
                  max_alloc_prefixlen=24,
                  private_ip_bindings='private_ip_binding.json',
                  debug=_lib.DEBUG_FLAG,
@@ -62,17 +64,24 @@ class IPNet(Mininet):
         self.unallocated_ip_base = [ipBase]
         super(IPNet, self).__init__(ipBase=ipBase, controller=controller,
                                     switch=switch, *args, **kwargs)
+        
 
     def addRouter(self, name, cls=None, **params):
         defaults = {'private_net': self.private_ip_net}
         defaults.update(params)
+        print name, defaults
         if not cls:
             cls = self.router
+        print cls
         r = cls(name, **defaults)
+        print self.routers
+        print "addes the object routers into some list, I guess used afterwords for the configuration"
         self.routers.append(r)
         self.nameToNode[name] = r
+        print self.nameToNode
         return r
 
+    #Needs to be erased, we want to use the Ryu controller instead of the fibbing.
     def addController(self, name, cls=None, **params):
         defaults = {CFG_KEY: {'base_net': self.controller_net,
                               'controller_prefixlen': 24,
@@ -94,7 +103,9 @@ class IPNet(Mininet):
 
     def buildFromTopo(self, topo=None):
         log.info('\n*** Adding Routers:\n')
+        
         for routerName in topo.routers():
+            #adds routers, I guess that time it does create the "hosts"
             self.addRouter(routerName, **topo.nodeInfo(routerName))
             log.info(routerName + ' ')
         log.info('\n\n*** Adding FibbingControllers:\n')
@@ -147,8 +158,19 @@ class IPNet(Mininet):
         super(IPNet, self).stop()
 
     def build(self):
+
         super(IPNet, self).build()
+        #TO ERASE
+        for h in self.hosts:
+            h.cmdPrint("ifconfig")
+
+        for r in self.routers:
+            r.cmdPrint("ifconfig")
+        ###
+
         domains = self.broadcast_domains()
+        pdb.set_trace()
+
         log.info("*** Found", len(domains), "broadcast domains\n")
         self.allocate_primaryIPS(domains)
         router_domains = filter(lambda x: x is not None and len(x) > 1,
@@ -159,6 +181,14 @@ class IPNet(Mininet):
                                   itf.params.get(PRIVATE_IP_KEY, [])
                                   for itf in domains}
                        for net, domains in allocations}, f)
+
+        #After this the IPS are set ADDED!!!
+        for h in self.hosts:
+            h.cmdPrint("ifconfig")
+
+        for r in self.routers:
+            r.cmdPrint("ifconfig")
+        ####
 
     def allocate_primaryIPS(self, domains):
         log.info("*** Allocating primary IPs\n")

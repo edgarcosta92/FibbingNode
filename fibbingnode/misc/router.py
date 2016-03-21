@@ -50,6 +50,7 @@ class QuaggaRouter(object):
         self.ospfd_pid = self._temp_path('ospf', 'pid')
         self.ospf_cfg = self._temp_path('ospf', 'conf')
         self.zebra_cfg = self._temp_path('zebra', 'conf')
+        #I think is not used...
         self.vtysh = VTYSH('localhost', OSPFD_PORT, node=self)
 
     def _temp_path(self, name, ext):
