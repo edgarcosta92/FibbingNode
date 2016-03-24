@@ -43,4 +43,4 @@ fibbing() {
     cd ${CWD}
 }
 
-quagga && fibbing
+fibbing

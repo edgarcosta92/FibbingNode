@@ -106,7 +106,8 @@ class MininetRouterConfig(RouterConfigDict):
                                                   .hello_interval)))
             networks.append((ip_interface('%s/%s' % (itf.ip, itf.prefixLen))
                              .network, area))
-            # TODO figure out the private config knob so that the private
+
+            # TODO figure out the private config knob so that the private (not mine)
             # addresses dont create redundant OSPF session over the same
             # interface ...
             try:

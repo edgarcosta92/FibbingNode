@@ -210,7 +210,7 @@ class VTYSH(object):
     def _read_until(self, delimiter):
         """Read and return the ouput of the shell until reaching
         the given delimiter (not included)"""
-        # TODO optimize ...
+        # TODO optimize ...(not mine)
         l = len(delimiter)
         b = self.session.stdout.read(l)
         while b[-l:] != delimiter:

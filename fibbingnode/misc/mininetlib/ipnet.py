@@ -2,21 +2,21 @@ import sys
 import math
 import json
 
-import pdb
 
 from ipaddress import ip_interface, ip_network
 
 from mininet.net import Mininet
-from mininet.node import Host
+from mininet.node import Host, OVSKernelSwitch
 from mininet.nodelib import LinuxBridge
 
 import fibbingnode.misc.mininetlib as _lib
-from fibbingnode.misc.mininetlib import get_logger, PRIVATE_IP_KEY, CFG_KEY,\
+from fibbingnode.misc.mininetlib import get_logger, PRIVATE_IP_KEY,\
                                         otherIntf, FIBBING_MIN_COST,\
                                         BDOMAIN_KEY, routers_in_bd,\
                                         FIBBING_DEFAULT_AREA
 from fibbingnode.misc.mininetlib.iprouter import IPRouter
-from fibbingnode.misc.mininetlib.fibbingcontroller import FibbingController
+
+
 
 from fibbingnode.misc.utils import cmp_prefixlen, is_container
 
@@ -39,15 +39,14 @@ class IPNet(Mininet):
     """
     def __init__(self,
                  router=IPRouter,
-                 controller=FibbingController,
                  private_ip_count=1,
                  private_ip_net='10.0.0.0/8',
                  controller_net='172.16.0.0/12',
-                 ipBase='192.164.0.0/16',
+                 ipBase='192.168.0.0/16',
                  max_alloc_prefixlen=24,
                  private_ip_bindings='private_ip_binding.json',
                  debug=_lib.DEBUG_FLAG,
-                 switch=LinuxBridge,
+                 switch=OVSKernelSwitch,
                  *args, **kwargs):
         _lib.DEBUG_FLAG = debug
         if debug:
@@ -62,35 +61,25 @@ class IPNet(Mininet):
         self.ip_allocs = {}
         self.max_alloc_prefixlen = max_alloc_prefixlen
         self.unallocated_ip_base = [ipBase]
-        super(IPNet, self).__init__(ipBase=ipBase, controller=controller,
+        super(IPNet, self).__init__(ipBase=ipBase,
                                     switch=switch, *args, **kwargs)
         
 
     def addRouter(self, name, cls=None, **params):
         defaults = {'private_net': self.private_ip_net}
         defaults.update(params)
-        print name, defaults
+        # print name, defaults
         if not cls:
             cls = self.router
-        print cls
+        #print cls
         r = cls(name, **defaults)
-        print self.routers
-        print "addes the object routers into some list, I guess used afterwords for the configuration"
+        #print self.routers
+        #print "addes the object routers into some list, I guess used afterwords for the configuration"
         self.routers.append(r)
         self.nameToNode[name] = r
-        print self.nameToNode
+        #print self.nameToNode
         return r
 
-    #Needs to be erased, we want to use the Ryu controller instead of the fibbing.
-    def addController(self, name, cls=None, **params):
-        defaults = {CFG_KEY: {'base_net': self.controller_net,
-                              'controller_prefixlen': 24,
-                              'debug': int(_lib.DEBUG_FLAG),
-                              'private_net': self.private_ip_net,
-                              'draw_graph': 0,
-                              'private_ips': self.private_ip_bindings}}
-        defaults.update(params)
-        super(IPNet, self).addController(name, controller=cls, **defaults)
 
     def __iter__(self):
         for r in self.routers:
@@ -108,14 +97,17 @@ class IPNet(Mininet):
             #adds routers, I guess that time it does create the "hosts"
             self.addRouter(routerName, **topo.nodeInfo(routerName))
             log.info(routerName + ' ')
-        log.info('\n\n*** Adding FibbingControllers:\n')
-        ctrlrs = topo.controllers()
-        if not ctrlrs:
-            self.controller = None
-        for cName in topo.controllers():
-            self.addController(cName, **topo.nodeInfo(cName))
-            log.info(cName + ' ')
-        log.info('\n')
+        # log.info('\n\n*** Adding FibbingControllers:\n')
+
+        #TODO: check this controller thing
+        # ctrlrs = topo.controllers()
+        self.controller = None
+        # if not ctrlrs:
+        #     self.controller = None
+        # for cName in topo.controllers():
+        #     self.addController(cName, **topo.nodeInfo(cName))
+        #     log.info(cName + ' ')
+        # log.info('\n')
         super(IPNet, self).buildFromTopo(topo)
 
     def start(self):
@@ -130,8 +122,10 @@ class IPNet(Mininet):
         log.info('*** Starting %s routers\n' % len(self.routers))
         for router in self.routers:
             log.info(router.name + ' ')
+            #check that and modify what quagga does, just remove private things
             router.start()
         log.info('\n')
+        #puts to all the hosts its default gateway
         log.info('*** Setting default host routes\n')
         for h in self.hosts:
             if 'defaultRoute' in h.params:
@@ -160,35 +154,26 @@ class IPNet(Mininet):
     def build(self):
 
         super(IPNet, self).build()
-        #TO ERASE
-        for h in self.hosts:
-            h.cmdPrint("ifconfig")
+        #At that point all the links and ip in the hosts are set.
+        # however now is the moment in which we should set the ips again
 
-        for r in self.routers:
-            r.cmdPrint("ifconfig")
-        ###
+        # #TO ERASE
+        # for h in self.hosts:
+        #      h.cmdPrint("ifconfig")
+        #      h.cmdPrint("route -n")
+        #
+        # for r in self.routers:
+        #     r.cmdPrint("ifconfig")
+        # ###
 
+        #here it gets all the network domains and its interfaces, amazing!!
         domains = self.broadcast_domains()
-        pdb.set_trace()
+
 
         log.info("*** Found", len(domains), "broadcast domains\n")
+
         self.allocate_primaryIPS(domains)
-        router_domains = filter(lambda x: x is not None and len(x) > 1,
-                                (routers_in_bd(d, IPRouter) for d in domains))
-        allocations = self.allocate_privateIPs(router_domains)
-        with open(self.private_ip_bindings, 'w') as f:
-            json.dump({str(net): {str(itf.node.id):
-                                  itf.params.get(PRIVATE_IP_KEY, [])
-                                  for itf in domains}
-                       for net, domains in allocations}, f)
 
-        #After this the IPS are set ADDED!!!
-        for h in self.hosts:
-            h.cmdPrint("ifconfig")
-
-        for r in self.routers:
-            r.cmdPrint("ifconfig")
-        ####
 
     def allocate_primaryIPS(self, domains):
         log.info("*** Allocating primary IPs\n")
@@ -291,6 +276,7 @@ class IPNet(Mininet):
     def broadcast_domains(self):
         """Returns [ [ intf ]* ]"""
         domains = []
+
         itfs = (intf for n in self.values() for intf in n.intfList()
                 if intf.name != 'lo' and
                 isBroadcastDomainBoundary(intf.node))
@@ -324,6 +310,7 @@ class IPNet(Mininet):
                 i.params[BDOMAIN_KEY] = bd
         return domains
 
+    #TODO: change the fibbing cost to 1? what the fuck is that?
     def addLink(self, node1, node2, port1=None, port2=None,
                 cost=FIBBING_MIN_COST, area=FIBBING_DEFAULT_AREA, **params):
         params1 = params.get('params1', {})
