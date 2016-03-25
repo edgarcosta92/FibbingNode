@@ -86,6 +86,7 @@ class QuaggaRouter(object):
         # Generate ospf/zebra conf
         self.create_ospf_conf(cfg_node)
         self.create_zebra_conf(cfg_node)
+
         # Enable ipv4 forwarding
         self.call('sysctl', '-w', 'net.ipv4.ip_forward=1')
         # Start zebra/ospf

@@ -35,13 +35,13 @@ class MininetRouter(QuaggaRouter):
 
 
 class IPRouter(Node, L3Router):
-    def __init__(self, name, private_net='10.0.0.0/8',
+    def __init__(self, name, private_net='11.0.0.0/8',
                  routerid=None, static_routes=(), debug=None,
                  **kwargs):
         """static_routes in the form of (prefix, via_node_id)*
         debug as a dict with the daemon name as key and the value
         is a list of quagga debug flags to set for that daemon"""
-        self.private_net = str(private_net)
+        # self.private_net = str(private_net)
         self.debug = debug if debug else {}
         self.rid = routerid
         self.static_routes = static_routes
@@ -52,10 +52,10 @@ class IPRouter(Node, L3Router):
 
     def start(self):
         self.cmd('ip', 'link', 'set', 'dev', 'lo', 'up')
-        for itf in self.intfList():
-            for ip in itf.params.get(PRIVATE_IP_KEY, ()):
-                self.cmd('ip', 'address', 'add', ip,
-                         'dev', itf.name, 'scope', 'link')
+        # for itf in self.intfList():
+        #     for ip in itf.params.get(PRIVATE_IP_KEY, ()):
+        #         self.cmd('ip', 'address', 'add', ip,
+        #                  'dev', itf.name, 'scope', 'link')
         neighbor_to_intf = {otherIntf(itf).name: itf
                             for itf in self.intfList()}
         self.static_routes = [(p, v if v not in neighbor_to_intf
@@ -123,20 +123,20 @@ class MininetRouterConfig(RouterConfigDict):
     def build_zebra(self, router):
         cfg = super(MininetRouterConfig, self).build_zebra(router)
         # Create route map to ignore 'private' addresses
-        plen = int(router.private_net.split('/')[1])
-        cfg.prefixlists = [ConfigDict(name='PRIVATE',
-                                      action='permit',
-                                      prefix=router.private_net,
-                                      ge=plen + 1)]
-        cfg.routemaps = [ConfigDict(name='IMPORT',
-                                    action='deny',
-                                    prio='10',
-                                    prefix=['PRIVATE'],
-                                    proto=[]),
-                         ConfigDict(name='IMPORT',
-                                    action='permit',
-                                    prio='20',
-                                    prefix=[],
-                                    proto=['ospf'])]
-        cfg.static_routes.extend(router.static_routes)
+        # plen = int(router.private_net.split('/')[1])
+        # cfg.prefixlists = [ConfigDict(name='PRIVATE',
+        #                               action='permit',
+        #                               prefix=router.private_net,
+        #                               ge=plen + 1)]
+        # cfg.routemaps = [ConfigDict(name='IMPORT',
+        #                             action='deny',
+        #                             prio='10',
+        #                             prefix=['PRIVATE'],
+        #                             proto=[]),
+        #                  ConfigDict(name='IMPORT',
+        #                             action='permit',
+        #                             prio='20',
+        #                             prefix=[],
+        #                             proto=['ospf'])]
+        # cfg.static_routes.extend(router.static_routes)
         return cfg

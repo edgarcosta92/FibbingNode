@@ -39,24 +39,15 @@ class IPNet(Mininet):
     """
     def __init__(self,
                  router=IPRouter,
-                 private_ip_count=1,
-                 private_ip_net='10.0.0.0/8',
-                 controller_net='172.16.0.0/12',
-                 ipBase='192.168.0.0/16',
+                 ipBase='10.0.0.0/8',
                  max_alloc_prefixlen=24,
-                 private_ip_bindings='private_ip_binding.json',
                  debug=_lib.DEBUG_FLAG,
                  switch=OVSKernelSwitch,
                  *args, **kwargs):
         _lib.DEBUG_FLAG = debug
         if debug:
             log.setLogLevel('debug')
-        self.private_ip_count = private_ip_count
-        self.private_ip_net = private_ip_net
-        self.unallocated_private_net = [private_ip_net]
         self.router = router
-        self.private_ip_bindings = private_ip_bindings
-        self.controller_net = controller_net
         self.routers = []
         self.ip_allocs = {}
         self.max_alloc_prefixlen = max_alloc_prefixlen
@@ -66,13 +57,16 @@ class IPNet(Mininet):
         
 
     def addRouter(self, name, cls=None, **params):
-        defaults = {'private_net': self.private_ip_net}
-        defaults.update(params)
+        # self.private_ip_net = "192.0.0.0/8"
+        # defaults = {'private_net': self.private_ip_net}
+        # defaults.update(params)
+        # defaults = params
         # print name, defaults
         if not cls:
             cls = self.router
         #print cls
-        r = cls(name, **defaults)
+        print params
+        r = cls(name, **params)
         #print self.routers
         #print "addes the object routers into some list, I guess used afterwords for the configuration"
         self.routers.append(r)
@@ -114,11 +108,11 @@ class IPNet(Mininet):
         for n in self.values():
             for i in n.intfList():
                 self.ip_allocs[str(i.ip)] = n
-                try:
-                    for sec in i.params[PRIVATE_IP_KEY]:
-                        self.ip_allocs[str(sec)] = n
-                except KeyError:
-                    pass
+                # try:
+                #     for sec in i.params[PRIVATE_IP_KEY]:
+                #         self.ip_allocs[str(sec)] = n
+                # except KeyError:
+                #     pass
         log.info('*** Starting %s routers\n' % len(self.routers))
         for router in self.routers:
             log.info(router.name + ' ')
@@ -181,28 +175,12 @@ class IPNet(Mininet):
                                                     domains,
                                                     max_prefixlen=self
                                                     .max_alloc_prefixlen):
+
             hosts = net.hosts()
             for intf in domain:
                 ip = str(next(hosts))
                 intf.setIP(ip, prefixLen=net.prefixlen)
 
-    def allocate_privateIPs(self, router_domains):
-        log.info("*** Allocating private router IPs\n")
-        alloc = []
-        for _ in xrange(self.private_ip_count):
-            alloc.extend(self.network_for_domains(self.unallocated_private_net,
-                                                  router_domains))
-        for net, domain in alloc:
-            hosts = net.hosts()
-            for intf in domain:
-                try:
-                    l = intf.params[PRIVATE_IP_KEY]
-                except KeyError:
-                    l = []
-                    intf.params[PRIVATE_IP_KEY] = l
-                finally:
-                    l.append('%s/%s' % (next(hosts), net.prefixlen))
-        return alloc
 
     @staticmethod
     def network_for_domains(net, domains, scale_factor=1,

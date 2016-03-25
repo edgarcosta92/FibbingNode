@@ -30,6 +30,13 @@ class FatTree(IPTopo):
         #k must be multiple of 2
         self.k = k
         self.extraSwitch = extraSwitch
+
+
+        self.ip_bindings = {}
+        self.ipBase = "10.0.0.0/8"
+        self.max_alloc_prefixlen=24
+
+
         super(FatTree,self).__init__(*args,**kwargs)
 
 
@@ -38,6 +45,7 @@ class FatTree(IPTopo):
     def build(self, *args, **kwargs):
 
         #build the topology
+
 
         aggregationRouters = self.addPods(self.extraSwitch)
         coreRouters = self.addCoreRouters()
@@ -91,7 +99,7 @@ class FatTree(IPTopo):
         if extraSwitch:
 
             #First a switch to grup all the hosts is created
-            switch_index = startIndex/self.k
+            switch_index = startIndex/(self.k/2)
             sw = self.addSwitch("sw_%d_%d" % (podNum, switch_index))
 
             #creatres k/2 OVSHosts
@@ -153,7 +161,7 @@ class FatTree(IPTopo):
             for switch in switches:
                 self.addLink(edge_router, switch)
 
-            startIndex += len(switches)
+            startIndex += self.k/2
 
         #only aggregation Routers are needed to connect with the core layer
         return aggregationRouters
@@ -234,7 +242,7 @@ class TestTopo(IPTopo):
 def launch_network():
 
     #topo = TestTopo()
-    topo = FatTree(k =2, extraSwitch=True)
+    topo = FatTree(k = 2, extraSwitch=True)
     intf = custom(TCIntf)
 
     #creates nodes and links
